@@ -46,12 +46,15 @@ const KINDS = {
     desc: "자동 작업이 제때 성공했는지 확인합니다.",
     states: { ok: "정상", stalled: "멈춤" },
     legend: { ok: "정상", stalled: "멈춤 (정해진 시간 안에 성공 기록 없음)" },
+    // 한 줄에 두 개씩 들어가는 간단한 카드
+    compact: true,
+    timelineSize: 36,
+    eventsLimit: 3,
     stats: [
-      { label: "확인 횟수", value: (rs) => rs.length.toLocaleString("ko-KR") },
       { label: "정상 비율", value: (rs) => percent(count(rs, "ok"), rs.length) },
       { label: "멈춤 횟수", value: (rs) => count(rs, "stalled"), tone: (rs) => count(rs, "stalled") && "bad" },
       {
-        label: "마지막 정상 확인",
+        label: "마지막 정상",
         value: (rs) => {
           const last = rs.findLast((r) => r.state === "ok");
           return last ? kst.format(last.time) : "-";
@@ -60,8 +63,8 @@ const KINDS = {
       },
     ],
     eventsTitle: "멈춤 기록",
-    columns: ["시각", "상태", "멈춘 작업", "HTTP"],
-    row: (r, label) => [kst.format(r.time), label, stalledJobs(r.detail).join(", ") || "확인 불가", r.code],
+    columns: ["시각", "HTTP"],
+    row: (r) => [kst.format(r.time), r.code],
     isEvent: (r) => r.state !== "ok",
     empty: "멈춤 기록 없음. 작업이 제때 성공하고 있습니다.",
   },
@@ -119,14 +122,20 @@ function renderTarget(target, records) {
   const label = (state) => kind.states[state] ?? state;
 
   $(".target-name").textContent = target.name;
-  $(".target-meta").textContent = target.url;
+  const meta = $(".target-meta");
+  if (kind.compact) {
+    node.querySelector(".target").classList.add("compact");
+    meta.title = target.url;
+  } else {
+    meta.textContent = target.url;
+  }
 
   const latest = records.at(-1);
   const badge = $(".badge");
   if (latest) {
     badge.textContent = label(latest.state);
     badge.classList.add(latest.state);
-    $(".target-meta").textContent += ` · 마지막 확인 ${kst.format(latest.time)}`;
+    meta.textContent += `${kind.compact ? "" : " · "}마지막 확인 ${kst.format(latest.time)}`;
   } else {
     badge.textContent = "기록 없음";
   }
@@ -146,8 +155,9 @@ function renderTarget(target, records) {
   }
 
   const timeline = $(".timeline");
-  const recent = records.slice(-TIMELINE_SIZE);
-  for (let i = recent.length; i < TIMELINE_SIZE; i++) {
+  const timelineSize = kind.timelineSize ?? TIMELINE_SIZE;
+  const recent = records.slice(-timelineSize);
+  for (let i = recent.length; i < timelineSize; i++) {
     timeline.append(document.createElement("span")); // 기록이 부족한 앞부분은 빈 칸
   }
   for (const r of recent) {
@@ -168,8 +178,9 @@ function renderTarget(target, records) {
     headRow.append(th);
   }
   const events = records.filter(kind.isEvent).reverse();
+  const shown = kind.eventsLimit ? events.slice(0, kind.eventsLimit) : events;
   const tbody = $(".events tbody");
-  for (const r of events) {
+  for (const r of shown) {
     const tr = document.createElement("tr");
     kind.row(r, label(r.state)).forEach((text, i) => {
       const td = document.createElement("td");
@@ -178,6 +189,10 @@ function renderTarget(target, records) {
       tr.append(td);
     });
     tbody.append(tr);
+  }
+  if (events.length > shown.length) {
+    $(".events-more").textContent = `최근 ${shown.length}건만 표시 (전체 ${events.length}건)`;
+    $(".events-more").hidden = false;
   }
   if (!events.length) {
     $(".table-wrap").hidden = true;
@@ -204,6 +219,7 @@ function renderGroup(kindKey, targets, recordsByName) {
   }
 
   const list = node.querySelector(".group-targets");
+  if (kind.compact) list.classList.add("compact");
   for (const target of targets) {
     list.append(renderTarget(target, recordsByName.get(target.name)));
   }

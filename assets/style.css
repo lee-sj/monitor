@@ -113,8 +113,25 @@ body {
 .legend.cold { background: var(--cold); }
 .legend.down, .legend.stalled { background: var(--down); }
 
+/* Job Monitor: 한 줄에 두 개씩 들어가는 간단한 카드 */
+.group-targets.compact { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+.target.compact { margin: 0; padding: 16px; }
+.target.compact .target-name { font-size: 1rem; }
+.target.compact .target-meta { font-size: 0.8125rem; }
+.target.compact .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.target.compact .stats div { padding: 8px 10px; }
+.target.compact .stats dt { font-size: 0.75rem; }
+.target.compact .stats dd { font-size: 1.125rem; }
+.target.compact .stats dd.small { margin-top: 4px; font-size: 0.8125rem; }
+.target.compact h4 { margin: 16px 0 6px; font-size: 0.8125rem; }
+.target.compact .timeline { height: 24px; }
+.target.compact .events { font-size: 0.8125rem; }
+.target.compact .events th, .target.compact .events td { padding: 6px 8px; }
+.events-more { margin: 6px 0 0; color: var(--muted); font-size: 0.75rem; }
+
 @media (max-width: 600px) {
   .stats { grid-template-columns: repeat(2, 1fr); }
+  .group-targets.compact { grid-template-columns: 1fr; }
   .target { padding: 16px; }
   .events th, .events td { padding: 8px 6px; }
 }
