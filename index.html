@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Uptime Monitor</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="page-header">
+    <h1>Uptime Monitor</h1>
+    <p class="subtitle">헬스체크 결과와 콜드스타트 기록 · 시간은 한국 시간(KST)</p>
+  </header>
+
+  <main id="targets">
+    <p class="notice">불러오는 중…</p>
+  </main>
+
+  <footer class="page-footer">
+    <p>
+      <span class="legend up"></span>정상
+      <span class="legend cold"></span>콜드스타트 (20초 초과, 잠들었다가 깨어남)
+      <span class="legend down"></span>장애
+    </p>
+    <p>기록은 GitHub Actions가 약 1시간마다 남기며, 실제 실행 간격은 밀릴 수 있습니다.</p>
+  </footer>
+
+  <template id="target-template">
+    <section class="target">
+      <div class="target-head">
+        <h2 class="target-name"></h2>
+        <span class="badge"></span>
+      </div>
+      <p class="target-meta"></p>
+
+      <dl class="stats">
+        <div><dt>확인 횟수</dt><dd data-stat="total"></dd></div>
+        <div><dt>가용률</dt><dd data-stat="availability"></dd></div>
+        <div><dt>콜드스타트</dt><dd data-stat="cold"></dd></div>
+        <div><dt>장애</dt><dd data-stat="down"></dd></div>
+      </dl>
+
+      <h3>최근 확인</h3>
+      <div class="timeline" role="img"></div>
+
+      <h3>콜드스타트 · 장애 기록</h3>
+      <div class="table-wrap">
+        <table class="events">
+          <thead><tr><th>시각</th><th>상태</th><th>HTTP</th><th>응답 시간</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="empty-events" hidden>기록 없음. keep-alive가 정상적으로 동작하고 있습니다.</p>
+    </section>
+  </template>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>
