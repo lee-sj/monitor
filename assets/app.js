@@ -1,13 +1,71 @@
-// targets.tsv와 data/<이름>.csv를 읽어 대상별 상태와 콜드스타트·장애 기록을 보여준다.
+// targets.tsv와 data/<이름>.csv를 읽어 모니터 종류(uptime, job)별로 대상 상태와 기록을 보여준다.
 
 const TIMELINE_SIZE = 72; // 최근 확인 막대 개수
-const STATE_LABEL = { up: "정상", cold: "콜드스타트", down: "장애" };
+
+// job 응답의 작업 키를 화면에 보여줄 이름. 없으면 키를 그대로 쓴다.
+const JOB_LABELS = { biddings: "입찰공고", pre_spec: "사전 규격" };
 
 const kst = new Intl.DateTimeFormat("ko-KR", {
   timeZone: "Asia/Seoul",
   year: "numeric", month: "2-digit", day: "2-digit",
   hour: "2-digit", minute: "2-digit", hour12: false,
 });
+
+const count = (records, state) => records.filter((r) => r.state === state).length;
+const percent = (part, total) => (total ? `${((part / total) * 100).toFixed(2)}%` : "-");
+
+// "biddings:ok pre_spec:stale" → ["사전 규격"]
+function stalledJobs(detail) {
+  return (detail || "").split(" ").filter(Boolean)
+    .map((pair) => pair.split(":"))
+    .filter(([, status]) => status !== "ok")
+    .map(([key]) => JOB_LABELS[key] ?? key);
+}
+
+// 모니터 종류별 제목, 상태 문구, 통계, 기록 표 구성
+const KINDS = {
+  uptime: {
+    title: "Uptime Monitor",
+    desc: "서버가 응답하는지 확인합니다.",
+    states: { up: "정상", cold: "콜드스타트", down: "장애" },
+    legend: { up: "정상", cold: "콜드스타트 (20초 초과, 잠들었다가 깨어남)", down: "장애" },
+    stats: [
+      { label: "확인 횟수", value: (rs) => rs.length.toLocaleString("ko-KR") },
+      { label: "가용률", value: (rs) => percent(rs.length - count(rs, "down"), rs.length) },
+      { label: "콜드스타트", value: (rs) => count(rs, "cold"), tone: (rs) => count(rs, "cold") && "warn" },
+      { label: "장애", value: (rs) => count(rs, "down"), tone: (rs) => count(rs, "down") && "bad" },
+    ],
+    eventsTitle: "콜드스타트 · 장애 기록",
+    columns: ["시각", "상태", "HTTP", "응답 시간"],
+    row: (r, label) => [kst.format(r.time), label, r.code, `${r.elapsed.toFixed(2)}s`],
+    isEvent: (r) => r.state !== "up",
+    empty: "기록 없음. keep-alive가 정상적으로 동작하고 있습니다.",
+  },
+  job: {
+    title: "Job Monitor",
+    desc: "자동 작업이 제때 성공했는지 확인합니다.",
+    states: { ok: "정상", stalled: "멈춤" },
+    legend: { ok: "정상", stalled: "멈춤 (정해진 시간 안에 성공 기록 없음)" },
+    stats: [
+      { label: "확인 횟수", value: (rs) => rs.length.toLocaleString("ko-KR") },
+      { label: "정상 비율", value: (rs) => percent(count(rs, "ok"), rs.length) },
+      { label: "멈춤 횟수", value: (rs) => count(rs, "stalled"), tone: (rs) => count(rs, "stalled") && "bad" },
+      {
+        label: "마지막 정상 확인",
+        value: (rs) => {
+          const last = rs.findLast((r) => r.state === "ok");
+          return last ? kst.format(last.time) : "-";
+        },
+        small: true,
+      },
+    ],
+    eventsTitle: "멈춤 기록",
+    columns: ["시각", "상태", "멈춘 작업", "HTTP"],
+    row: (r, label) => [kst.format(r.time), label, stalledJobs(r.detail).join(", ") || "확인 불가", r.code],
+    isEvent: (r) => r.state !== "ok",
+    empty: "멈춤 기록 없음. 작업이 제때 성공하고 있습니다.",
+  },
+};
 
 // <owner>.github.io/<repo>/에서 열리면 저장소 원본에서 직접 읽는다.
 // Pages 재배포를 기다리지 않고 워크플로가 커밋한 최신 기록을 보여주기 위해서다.
@@ -31,23 +89,34 @@ function parseTargets(text) {
     .map((line) => line.trim())
     .filter((line) => line && !line.startsWith("#"))
     .map((line) => {
-      const [name, url] = line.split("\t");
-      return { name, url };
+      const [name, url, kind] = line.split("\t");
+      return { name, url, kind: KINDS[kind] ? kind : "uptime" };
     });
 }
 
+// 종류마다 열 구성이 달라서 헤더 이름으로 값을 읽는다
 function parseRecords(text) {
-  return text.trim().split("\n").slice(1)
+  const [header, ...lines] = text.trim().split("\n");
+  const keys = header.split(",");
+  return lines
     .map((line) => {
-      const [timestamp, code, elapsed, state] = line.split(",");
-      return { time: new Date(timestamp), code, elapsed: Number(elapsed), state };
+      const row = Object.fromEntries(line.split(",").map((v, i) => [keys[i], v]));
+      return {
+        time: new Date(row.timestamp),
+        code: row.status_code,
+        elapsed: Number(row.elapsed_s),
+        state: row.state,
+        detail: row.detail ?? "",
+      };
     })
     .filter((r) => !Number.isNaN(r.time.getTime()));
 }
 
 function renderTarget(target, records) {
+  const kind = KINDS[target.kind];
   const node = document.getElementById("target-template").content.cloneNode(true);
   const $ = (sel) => node.querySelector(sel);
+  const label = (state) => kind.states[state] ?? state;
 
   $(".target-name").textContent = target.name;
   $(".target-meta").textContent = target.url;
@@ -55,24 +124,26 @@ function renderTarget(target, records) {
   const latest = records.at(-1);
   const badge = $(".badge");
   if (latest) {
-    badge.textContent = STATE_LABEL[latest.state] ?? latest.state;
+    badge.textContent = label(latest.state);
     badge.classList.add(latest.state);
     $(".target-meta").textContent += ` · 마지막 확인 ${kst.format(latest.time)}`;
   } else {
     badge.textContent = "기록 없음";
   }
 
-  const count = (state) => records.filter((r) => r.state === state).length;
-  const total = records.length;
-  const cold = count("cold");
-  const down = count("down");
-  const stat = (key) => $(`[data-stat="${key}"]`);
-  stat("total").textContent = total.toLocaleString("ko-KR");
-  stat("availability").textContent = total ? `${(((total - down) / total) * 100).toFixed(2)}%` : "-";
-  stat("cold").textContent = cold;
-  stat("down").textContent = down;
-  if (cold) stat("cold").classList.add("warn");
-  if (down) stat("down").classList.add("bad");
+  const stats = $(".stats");
+  for (const stat of kind.stats) {
+    const box = document.createElement("div");
+    const dt = document.createElement("dt");
+    const dd = document.createElement("dd");
+    dt.textContent = stat.label;
+    dd.textContent = stat.value(records);
+    const tone = stat.tone?.(records);
+    if (tone) dd.classList.add(tone);
+    if (stat.small) dd.classList.add("small");
+    box.append(dt, dd);
+    stats.append(box);
+  }
 
   const timeline = $(".timeline");
   const recent = records.slice(-TIMELINE_SIZE);
@@ -82,17 +153,25 @@ function renderTarget(target, records) {
   for (const r of recent) {
     const bar = document.createElement("span");
     bar.className = r.state;
-    bar.title = `${kst.format(r.time)} · ${STATE_LABEL[r.state] ?? r.state} · HTTP ${r.code} · ${r.elapsed}s`;
+    const jobs = stalledJobs(r.detail);
+    bar.title = `${kst.format(r.time)} · ${label(r.state)}${jobs.length ? ` (${jobs.join(", ")})` : ""} · HTTP ${r.code}`;
     timeline.append(bar);
   }
-  timeline.setAttribute("aria-label", `최근 ${recent.length}회 확인 중 콜드스타트 ${recent.filter((r) => r.state === "cold").length}회, 장애 ${recent.filter((r) => r.state === "down").length}회`);
+  const eventCount = recent.filter(kind.isEvent).length;
+  timeline.setAttribute("aria-label", `최근 ${recent.length}회 확인 중 ${kind.eventsTitle.replace(" 기록", "")} ${eventCount}회`);
 
-  const events = records.filter((r) => r.state !== "up").reverse();
+  $(".events-title").textContent = kind.eventsTitle;
+  const headRow = $(".events thead tr");
+  for (const col of kind.columns) {
+    const th = document.createElement("th");
+    th.textContent = col;
+    headRow.append(th);
+  }
+  const events = records.filter(kind.isEvent).reverse();
   const tbody = $(".events tbody");
   for (const r of events) {
     const tr = document.createElement("tr");
-    const cells = [kst.format(r.time), STATE_LABEL[r.state] ?? r.state, r.code, `${r.elapsed.toFixed(2)}s`];
-    cells.forEach((text, i) => {
+    kind.row(r, label(r.state)).forEach((text, i) => {
       const td = document.createElement("td");
       td.textContent = text;
       if (i === 1) td.className = `state-${r.state}`;
@@ -102,23 +181,53 @@ function renderTarget(target, records) {
   }
   if (!events.length) {
     $(".table-wrap").hidden = true;
+    $(".empty-events").textContent = kind.empty;
     $(".empty-events").hidden = false;
   }
 
   return node;
 }
 
+function renderGroup(kindKey, targets, recordsByName) {
+  const kind = KINDS[kindKey];
+  const node = document.getElementById("group-template").content.cloneNode(true);
+  node.querySelector(".group-title").textContent = kind.title;
+  node.querySelector(".group-desc").textContent = kind.desc;
+
+  const legend = node.querySelector(".group-legend");
+  for (const [state, text] of Object.entries(kind.legend)) {
+    const item = document.createElement("span");
+    const swatch = document.createElement("span");
+    swatch.className = `legend ${state}`;
+    item.append(swatch, text);
+    legend.append(item);
+  }
+
+  const list = node.querySelector(".group-targets");
+  for (const target of targets) {
+    list.append(renderTarget(target, recordsByName.get(target.name)));
+  }
+  return node;
+}
+
 async function main() {
-  const container = document.getElementById("targets");
+  const container = document.getElementById("groups");
   try {
     const targetsText = await fetchText("targets.tsv");
     const targets = targetsText ? parseTargets(targetsText) : [];
-    const sections = await Promise.all(targets.map(async (target) => {
+    const recordsByName = new Map(await Promise.all(targets.map(async (target) => {
       const csv = await fetchText(`data/${target.name}.csv`);
-      return renderTarget(target, csv ? parseRecords(csv) : []);
-    }));
-    container.replaceChildren(...sections);
-    if (!sections.length) container.innerHTML = '<p class="notice">targets.tsv에 대상이 없습니다.</p>';
+      return [target.name, csv ? parseRecords(csv) : []];
+    })));
+
+    // KINDS에 정의한 순서(uptime → job)대로 섹션을 만든다
+    const groups = Object.keys(KINDS)
+      .map((kindKey) => [kindKey, targets.filter((t) => t.kind === kindKey)])
+      .filter(([, list]) => list.length)
+      .map(([kindKey, list]) => renderGroup(kindKey, list, recordsByName));
+
+    container.replaceChildren(...groups);
+    if (!groups.length) container.innerHTML = '<p class="notice">targets.tsv에 대상이 없습니다.</p>';
   } catch (err) {
     container.innerHTML = "";
     const p = document.createElement("p");
