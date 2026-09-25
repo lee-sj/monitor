@@ -1,4 +1,4 @@
-# uptime-monitor
+# monitor
 
 GitHub Actions로 여러 서버의 헬스체크 결과를 기록하는 저장소입니다.
 
@@ -19,7 +19,7 @@ GitHub Actions로 여러 서버의 헬스체크 결과를 기록하는 저장소
 `index.html`과 `assets/`는 GitHub Pages로 공개되는 상태 페이지입니다. 대상별 현재 상태, 가용률, 최근 72회 확인 결과, 콜드스타트·장애 기록을 보여줍니다.
 
 - 설정: Settings → Pages → Source를 "Deploy from a branch"로 두고 `master` / `/ (root)`를 선택합니다.
-- 주소: https://lee-sj.github.io/uptime-monitor/
+- 주소: https://lee-sj.github.io/monitor/
 - Pages에서 열면 기록을 `raw.githubusercontent.com`에서 직접 읽습니다. 그래서 Pages 재배포와 관계없이 최신 커밋이 반영됩니다. 최대 5분 정도 캐시될 수 있습니다.
 - 로컬 미리보기: `python3 -m http.server` 실행 후 http://localhost:8000
 
@@ -27,6 +27,13 @@ GitHub Actions로 여러 서버의 헬스체크 결과를 기록하는 저장소
 
 슬립 방지는 이 저장소가 아니라 각 앱이 직접 담당합니다. 각 앱(paper, sec-ranking)의 `gunicorn.conf.py`가 5분마다 자기 공개 URL을 호출합니다.
 이 저장소는 그 장치가 멈췄을 때(`cold`) 이를 감지하고, 서버를 다시 깨우는 보조 역할을 합니다.
+
+## 수집 상태 확인
+
+서버 헬스체크와 별도로, 앱의 자동 작업이 실제로 돌고 있는지도 같은 방식으로 확인합니다.
+해당 엔드포인트는 작업이 정상이면 200, 멈췄으면 503을 돌려주므로 `targets.tsv`에 한 줄 추가하면 됩니다.
+
+- `paper-collect`: paper의 `/health/collect/`. 입찰공고·사전 규격 자동 수집의 마지막 성공이 3시간 넘게 지나면 503이 되어 `down`으로 기록되고 `outage` 이슈가 열립니다.
 
 ## 대상 추가
 
