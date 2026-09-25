@@ -27,6 +27,7 @@ const KINDS = {
   uptime: {
     title: "Uptime Monitor",
     desc: "서버가 응답하는지 확인합니다.",
+    projectLink: true,
     states: { up: "정상", cold: "콜드스타트", down: "장애" },
     legend: { up: "정상", cold: "콜드스타트 (20초 초과, 잠들었다가 깨어남)", down: "장애" },
     stats: [
@@ -123,11 +124,18 @@ function renderTarget(target, records) {
 
   $(".target-name").textContent = target.name;
   const meta = $(".target-meta");
+  meta.title = target.url; // 확인하는 URL은 마우스를 올리면 보인다
   if (kind.compact) {
     node.querySelector(".target").classList.add("compact");
-    meta.title = target.url;
-  } else {
-    meta.textContent = target.url;
+  }
+  if (kind.projectLink) {
+    // 헬스체크 URL 대신 서비스 첫 화면(같은 도메인의 루트)으로 가는 링크를 둔다
+    const link = document.createElement("a");
+    link.href = new URL("/", target.url).href;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = "프로젝트 링크";
+    meta.append(link);
   }
 
   const latest = records.at(-1);
@@ -135,7 +143,8 @@ function renderTarget(target, records) {
   if (latest) {
     badge.textContent = label(latest.state);
     badge.classList.add(latest.state);
-    meta.textContent += `${kind.compact ? "" : " · "}마지막 확인 ${kst.format(latest.time)}`;
+    const sep = meta.childNodes.length ? " · " : "";
+    meta.append(`${sep}마지막 확인 ${kst.format(latest.time)}`);
   } else {
     badge.textContent = "기록 없음";
   }

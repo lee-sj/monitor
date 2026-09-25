@@ -63,6 +63,8 @@ body {
 .target-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .target-name { margin: 0; font-size: 1.125rem; }
 .target-meta { margin: 4px 0 0; color: var(--muted); font-size: 0.875rem; overflow-wrap: anywhere; }
+.target-meta a { color: inherit; text-underline-offset: 2px; }
+.target-meta a:hover { color: var(--text); }
 
 .badge {
   padding: 2px 10px;
