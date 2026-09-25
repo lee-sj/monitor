@@ -1,0 +1,2 @@
+timestamp,status_code,elapsed_s,state,detail
+2026-09-25T06:05:49Z,200,0.43,ok,pre_spec:ok

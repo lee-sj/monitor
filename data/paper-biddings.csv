@@ -1,0 +1,2 @@
+timestamp,status_code,elapsed_s,state,detail
+2026-09-25T06:05:48Z,200,0.44,ok,biddings:ok
