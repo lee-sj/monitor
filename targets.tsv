@@ -1,4 +1,5 @@
 # 이름	URL	종류(uptime|job, 생략 시 uptime)
 paper	https://univ-paper.onrender.com/health/	uptime
 sec-ranking	https://sec-ranking.onrender.com/health/	uptime
-paper-collect	https://univ-paper.onrender.com/health/collect/	job
+paper-biddings	https://univ-paper.onrender.com/health/collect/biddings/	job
+paper-pre-spec	https://univ-paper.onrender.com/health/collect/pre-spec/	job

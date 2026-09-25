@@ -33,7 +33,10 @@ GitHub Actions로 여러 서버의 응답 상태와 자동 작업 상태를 기�
 
 현재 대상
 
-- `paper-collect`: paper의 `/health/collect/`. 입찰공고·사전 규격 자동 수집의 마지막 성공이 3시간 넘게 지나면 멈춤으로 판정됩니다.
+- `paper-biddings`: paper의 `/health/collect/biddings/`. 입찰공고 자동 수집의 마지막 성공이 3시간 넘게 지나면 멈춤으로 판정됩니다.
+- `paper-pre-spec`: paper의 `/health/collect/pre-spec/`. 사전 규격 자동 수집 기준, 판정 방식은 같습니다.
+
+Job Monitor 카드는 한 줄에 두 개씩 간단한 형태로 표시됩니다 (`KINDS.job.compact`).
 
 ## 상태 페이지
 
