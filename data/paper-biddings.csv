@@ -172,3 +172,4 @@ timestamp,status_code,elapsed_s,state,detail
 2026-10-29T21:47:20Z,200,0.50,ok,biddings:ok
 2026-10-30T01:56:08Z,200,0.57,ok,biddings:ok
 2026-10-30T08:35:23Z,200,0.52,ok,biddings:ok
+2026-10-30T15:53:59Z,503,31.34,stalled,biddings:stale
