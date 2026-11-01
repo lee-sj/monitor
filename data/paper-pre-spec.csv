@@ -180,3 +180,4 @@ timestamp,status_code,elapsed_s,state,detail
 2026-10-31T18:32:01Z,503,31.16,stalled,pre_spec:stale
 2026-10-31T22:27:44Z,503,31.76,stalled,pre_spec:stale
 2026-11-01T02:11:46Z,503,31.46,stalled,pre_spec:stale
+2026-11-01T09:11:57Z,200,0.61,ok,pre_spec:ok
